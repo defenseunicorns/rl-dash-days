@@ -10,7 +10,6 @@ def init_weights(m):
 class GradMultiply(torch.autograd.Function):
     """
         Used for scaling the gradient in the split Q-learning implementation
-        originally from fairseq module under MIT license.
     """
     @staticmethod
     def forward(ctx, x, scale):
@@ -57,8 +56,9 @@ class ResNet(nn.Module):
         :param alpha: for use with split-qlearning to scale the gradient
     """
     def __init__(self, height, width, frames, num_actions, q_learn, alpha=1):
-        super(DQN, self).__init__()
+        super().__init__()
         self.num_actions = num_actions
+        self.q_learn = q_learn
         self.alpha = alpha
         new_h = self.get_output_dim(height)
         new_w = self.get_output_dim(width)
