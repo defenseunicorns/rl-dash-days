@@ -8,20 +8,22 @@ from networks.dqn import DQN, ReplayBuffer, init_weights
 from envs.mspacman import MSPacmanQL
 import random
 
-class DDQLearn:
+class DDQ:
     """
         Double Deep Q-learning implementation
 
         :param name: name for checkpointing / data
         :param env: Environment object
+        :param reward_fcn: reward function
         :param gamma: reward discount
         :param batch_size: replay buffer batch sizes
         :param env: gym environment
         :param num_frames: number of frames per state (and number per action)
     """
-    def __init__(self, name, env, gamma=.95, batch_size=64, num_frames=4):
+    def __init__(self, name, env, reward_fcn, gamma=.95, batch_size=64, num_frames=4):
         self.name = name
         self.path = f'./models/checkpoint_{self.name}.pt'
+        self.reward_fcn = reward_fcn
         self.num_frames = num_frames
         self.device = torch.device('cuda') if torch.cuda.device_count() > 0 else torch.device('cpu')
         self.memory = ReplayBuffer(50000)
@@ -29,7 +31,7 @@ class DDQLearn:
         self.batch_size = batch_size
         self.score_history = []
         self.env = env
-        self.start = self.env.reset()[0]
+        self.start = self.reset_env()
         _, height, width = self.start.size()
         self.num_actions = self.env.action_space
         self.policy = DQN(height, width, num_frames, self.num_actions).to(self.device)
@@ -76,6 +78,11 @@ class DDQLearn:
 
         return loss.item()
 
+    def reset_env(self):
+        state, score, terminal, lives, frame_number = self.env.reset()
+        self.lives = lives
+        return state
+
     def get_epsilon_for_iteration(self, iteration):
         return max(.01, 1-(iteration*.99/300000))
 
@@ -97,7 +104,8 @@ class DDQLearn:
         else:
             q_vals = self.get_q_vals(state)
             action = self.env.choose_best_action(q_vals, punishments=None)
-        new_state, reward, score, terminal, lives, frame_number = self.env.step(action)
+        new_state, score, terminal, lives, frame_number = self.env.step(action)
+        reward = self.reward_fcn(score, lives, self.lives, frame_number)
 
         mem = (state.unsqueeze(0), action,
                new_state.unsqueeze(0), reward, terminal)
@@ -152,15 +160,33 @@ class DDQLearn:
                 running_score = 0
                 running_its = 0
             if e%updates == 0:
-                torch.save(self.policy.state_dict(), MODEL_PATH)
-                self.load_target(MODEL_PATH)
+                torch.save(self.policy.state_dict(), self.path)
+                self.load_target(self.path)
 
     def load_target(self, path):
         self.target.load_state_dict(torch.load(path))
         self.target.eval()
 
     def play(self):
-        state = self.env
+        state = self.env.reset()[0]
+        im = plt.imshow(self.env.render())
+        plt.ion()
+        terminal = False
+        while not terminal:
+            q_v = self.get_q_vals(state)
+            action = self.env.choose_best_action(q_vals, punishments=None)
+            new_frames = []
+            for i in range(self.num_frames):
+                frame, reward, terminal, truncated, info = self.env.step(action)
+                lives = info['lives']
+                if terminal:
+                    break
+                im.set_data(self.env.render())
+                plt.draw()
+                plt.pause(.001)
+                new_frames.append(self.env.img_preprocess(new_frame))
+            state = torch.cat(new_frames)
+        plt.show()
         
 
     def plot(self):

@@ -1,14 +1,14 @@
-#import agent of choice
-#from networks.SQNetwork import SLearningNetwork
-from networks.DSQNetwork import DSLearningNetwork
-#from networks.DDQNetwork import DLearningNetwork
-#from networks.DQNetwork import LearningNetwork
+from algos import DDQ
+from envs.mspacman import MsPacmanQL, MsPacmanPPO
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+import argparse
+
+def build_environment(algo, )
 
 if __name__ == '__main__':
-  network = DSLearningNetwork()
+  env = 
   network.train(20000)
 
   data_path = './data/dsqn_vanilla.csv'

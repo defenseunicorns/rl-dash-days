@@ -19,8 +19,6 @@ class MsPacmanEnv(Environment):
                          info_args, render_mode, **kwargs)
         if action_space is None:
             self.action_space = self.env.action_space.shape
-        self.lives = 0
-        self.score = 0
 
     def image_preprocess(self, img):
         """ Preprocesses a MsPacmanDeterministic observation
@@ -47,9 +45,8 @@ class MsPacmanEnv(Environment):
 
     def render(self):
         """renders the current frame in the environment"""
-        im = plt.imshow(self.env.render())
-        plt.ion()
-        plt.show()
+        return self.env.render()
+        
 
     def sample(self):
         """samples from the action space"""
@@ -86,7 +83,7 @@ class MsPacmanEnv(Environment):
                 total_reward = 0
                 break
             frames.append(frame)
-        return self.bundle_update(frames, reward, terminal, info)
+        return self.bundle_update(frames, total_reward, terminal, info)
 
 class MsPacmanQL(MsPacmanEnv):
     """
@@ -95,28 +92,12 @@ class MsPacmanQL(MsPacmanEnv):
 
         Q learning update in form state, reward, score, terminal, lives, frame_number
         Split-Q in form state, reward, punishment, score, terminal, lives, frame_number
-
-        :param reward_fcn: custom reward functions
-        :param split_q: whether rewards and punishments are split
     """
     
-    def __init__(self, reward_fcn, split_q, num_frames=4, action_space=9,
+    def __init__(self, split_q, num_frames=4, action_space=9,
                  environment=None, environment_name='MsPacmanDeterministic-v4',
                  info_args=['lives','frame_number'], render_mode='rgb_array', **kwargs):
         super().__init__()
-        self.reward_fcn = reward_fcn
-        self.split_q = split_q
-
-    def bundle_update(self, frames, score, terminal, info):
-        """Custom updating for Q learning / Split Q-learning"""
-        state = torch.cat(frames)
-        update = [state]
-        if self.split_q:
-            reward, punishment = reward_fcn(score, terminal, info)
-            update.append(reward)
-            update.append(punishment)
-        else:
-            update.append(reward_fcn(score))
 
     def choose_best_action(self, rewards, punishments=None):
         """Chooses the best action given the q-values
@@ -134,11 +115,9 @@ class MsPacmanPPO(MsPacmanEnv):
         Simulates actual joystick manipulation
         
         update in form state, reward, score, terminal, lives, frame_number
-
-        :param reward_fcn: custom reward function
     """
     
-    def __init__(self, reward_fcn, num_frames=4, action_space=9,
+    def __init__(self, num_frames=4, action_space=9,
                  environment=None, environment_name='MsPacmanDeterministic-v4',
                  info_args=['lives','frame_number'], render_mode='rgb_array', **kwargs):
         super().__init__()
@@ -146,12 +125,6 @@ class MsPacmanPPO(MsPacmanEnv):
 
     def sample(self):
         """Custom sampling to create fake joystick positions"""
-        
-
-    def bundle_update(self, frames, score, terminal, info):
-        """Custom updating for Q learning / Split Q-learning"""
-        state = torch.cat(frames)
-        reward = self.reward_fcn(score, terminal, info)
         
 
     def interpret_action(self, x_value, y_value):
