@@ -68,7 +68,6 @@ class PPO:
         :param num_actions: ppo action space
         :param eps_clip: clipping for ppo updates
         :param timesteps_per_batch: Max timesteps for a single game
-        :param max_episodes: total number of games to run
         :param update_timesteps: how many timesteps to update model
         :param k_epochs: number of stochastic model updates
     """
@@ -77,7 +76,6 @@ class PPO:
                  num_actions=2, training=True,
                  eps_clip = .2,
                  timesteps_per_batch=2048,
-                 max_episodes=5000,
                  update_timesteps=5000,
                  k_epochs=10, **reward_kwargs):
         self.name = name
@@ -174,7 +172,7 @@ class PPO:
     def train(self, epochs=10000, start_iter=0):
         self.logger = Logger()
         running_stats = self.logger.init_stats()
-        for e in range(self.max_episodes):
+        for e in range(epochs):
             state, score, terminal, lives, frame = self.env.reset()
             self.lives = lives
             running_stats = self.logger.init_epoch(running_stats)
