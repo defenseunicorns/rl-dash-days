@@ -18,5 +18,4 @@ def get_box_plot(variable, last_n):
     df['score/actions'] = df['score'] / df['actions']
     fig = px.box(df, x='name', y=variable, title=f'Last {last_n} training points',
                 labels={'name':'Model'})
-    print(df.name.unique())
     return fig

@@ -210,7 +210,7 @@ class PPO:
         im = plt.imshow(self.env.render())
         plt.ion()
         while not terminal:
-            action, logprob = self.policy.act(state.unsqueeze.to(self.device))
+            action, logprob = self.policy.act(state.unsqueeze(0).to(self.device))
             state, score, terminal, lives, frames = self.env.step(action.squeeze(0), render=True, im=im)
         plt.show()
         

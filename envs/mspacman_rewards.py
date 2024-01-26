@@ -19,6 +19,7 @@ def death_tax(reward, curr_lives, prev_lives, terminal, **kwargs):
         return reward - death_pen*(prev_lives - curr_lives)
 
 def ghost_buster(reward, curr_lives, prev_lives, terminal, **kwargs):
+    """extra rewards for killing ghosts"""
     ghost_mult = kwargs.get('ghost_mult', 1)
     if reward > 200:
         return reward*ghost_mult
