@@ -19,7 +19,7 @@ def build_runner(name, algo):
     function = reward_fcns.get('vanilla', None)
     if not function:
         function = lambda a,b,c,d : a
-    env = MsPacmanEnv(ppo = (algo=='PPO')
+    env = MsPacmanEnv(ppo = (algo=='PPO'))
     if algo == 'PPO':
         runner = PPO(name, env, function, training=False)
     elif algo == 'DDQ':

@@ -1,10 +1,30 @@
 from dash import dcc, html, Input, Output, State, callback, no_update
 
+from callbacks.loaders import get_models, get_histories, get_model_hypers
+
 import pandas as pd
 import numpy as np
 import os
 
 def register_callbacks(app):
+
+    @app.callback(
+        Output('model-select', 'options'),
+        Output('model-select', 'value'),
+        Input('model-select', 'placeholder')
+    )
+    def get_model_names(ph):
+        models = get_models()
+        return models, models[0]
+
+    @app.callback(
+        Output('model-params', 'data'),
+        Input('model-select', 'value')
+    )
+    def get_model_parameters(model_name):
+        params = get_model_hypers(model_name)
+        return params.to_dict('records')
+    
     @app.callback(
         Output('launch-cmd', 'children'),
         Input('submit-train', 'n_clicks'),
@@ -38,7 +58,7 @@ def register_callbacks(app):
                 cmd = f'python train.py -n {name} -a {algo} '
                 if reward_fcn is not None:
                     cmd += f'-r {reward_fcn} '
-                if epochs < 10000 and epochs > 1000:
+                if epochs and epochs < 10000 and epochs > 1000:
                     cmd += f'-e {epochs} '
                 if death is not None:
                     cmd += f'-d {death} '
@@ -58,8 +78,6 @@ def register_callbacks(app):
                 return f'Error processing args: {e}'
         else:
             return no_update
-
-        
     
     @app.callback(
         Output('splitq-div', 'style'),

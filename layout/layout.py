@@ -10,7 +10,7 @@ header_layout = html.Div([
     ],className='col-sm-auto'),
     html.Div([
         html.H3("Reinforcement Learning Dashboard")
-    ], className='col-lg-auto', style={'margin':'auto'})
+    ], className='col-lg-auto', style={'margin':'auto', 'text-align':'center'})
 ], className='row')
 
 train_layout = html.Div([
@@ -124,10 +124,49 @@ eval_layout = html.Div([
             ]),
         ])
     ], className='row'),
+    html.Div([
+        dash_table.DataTable(
+            id = 'model-params',
+            data = None,
+            columns=[{"name": i, "id": i} for i in ['Param', 'Value']]
+        )
+    ], className='row')
 ], className='col-md')
 
+graph_layout = html.Div([
+    dbc.Card([
+        dbc.CardBody([
+            html.H4("Model Performance"),
+            html.Div([
+                html.Div(['Graph type',
+                    dcc.Dropdown(
+                        id='graph-select',
+                        options=['line', 'boxplot'],
+                        placeholder=['Select a graph type']
+                    ),
+                ], className='col'),
+                html.Div(["Boxplot last X epoch selection"
+                    dcc.Input('last-n-input',
+                              type='number',
+                              placeholder='Last x epochs (hundreds)',
+                              value = 10
+                ], className='col'),
+            ], className='row'),
+            html.Div([
+                dcc.Graph(
+                    id='graph',
+                    fig=None
+                )
+            ], className='row')
+        ])
+    ])
+])
+
 app_layout = html.Div([
-    header_layout,
-    train_layout,
-    eval_layout
-], className='row')
+    html.Div([
+        header_layout,
+        train_layout,
+        eval_layout
+    ], className='row'),
+    graph_layout,
+], className='row', style={'width':'99%', {'padding-left':'15px'})
