@@ -32,6 +32,10 @@ def eval_model(name, algo):
     runner = build_runner(name, algo)
     runner.eval()
 
+def launch_test(name, algo):
+    cmd = ['python', 'test.py', '-n', name, '-a', algo]
+    proc = Popen(cmd)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Provide training arguments")
     parser.add_argument('-n', '--name')

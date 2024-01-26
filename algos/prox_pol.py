@@ -101,7 +101,6 @@ class PPO:
             self.policy.train()
             self.timesteps_per_batch = timesteps_per_batch
             self.update_timesteps = update_timesteps
-            self.max_episodes = max_episodes
             self.k_epochs = k_epochs
             self.iteration = 0
             self.eps_clip = eps_clip
@@ -141,7 +140,7 @@ class PPO:
         self.target.load_state_dict(self.policy.state_dict())
 
     def load_eval(self):
-        self.policy.load_state_dict(self.path)
+        self.policy.load_state_dict(torch.load(self.path))
         self.policy.eval()
     
     def update(self, running_stats):

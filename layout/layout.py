@@ -101,8 +101,10 @@ train_layout = html.Div([
         ])
     ], className='row', style={'display':'none'}),
     html.Div([
-        dbc.Button('Launch training', id='submit-train', n_clicks=0)
-    ]),
+        html.Div([
+            dbc.Button('Launch training', id='submit-train', n_clicks=0),
+        ], className='col'),
+    ], className='row'),
     html.Div([], id='launch-cmd'),
 ], className='col-sm')
 
@@ -119,6 +121,9 @@ eval_layout = html.Div([
                             ],
                             placeholder='Select a model',
                         ),
+                    ], className='col'),
+                    html.Div([
+                        dbc.Button('Launch Testing', id='submit-test', n_clicks=0),
                     ], className='col'),
                 ])
             ]),
@@ -142,20 +147,26 @@ graph_layout = html.Div([
                     dcc.Dropdown(
                         id='graph-select',
                         options=['line', 'boxplot'],
-                        placeholder=['Select a graph type']
+                        value='line'
                     ),
                 ], className='col'),
-                html.Div(["Boxplot last X epoch selection"
-                    dcc.Input('last-n-input',
-                              type='number',
-                              placeholder='Last x epochs (hundreds)',
-                              value = 10
+                html.Div([
+                    html.Div(["Truncate to last N epochs"]),
+                        dcc.Input(id='last-n-input',
+                                  type='number',
+                                  value = 10)
+                    ], className='col'),
+                html.Div(["Variable to plot",
+                    dcc.Dropdown(
+                        id='box-var-select',
+                        options=['score', 'actions', 'score/actions'],
+                        value='score',
+                    )
                 ], className='col'),
             ], className='row'),
             html.Div([
                 dcc.Graph(
                     id='graph',
-                    fig=None
                 )
             ], className='row')
         ])
@@ -169,4 +180,5 @@ app_layout = html.Div([
         eval_layout
     ], className='row'),
     graph_layout,
-], className='row', style={'width':'99%', {'padding-left':'15px'})
+    html.Div(id='trigger_launch', children=[]),
+], className='row', style={'width':'99%', 'padding-left':'15px'})

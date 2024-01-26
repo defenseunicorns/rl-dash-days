@@ -22,11 +22,17 @@ def get_histories(models, last_n):
             data = pd.read_csv(f'./data/{model}.csv')
         except Exception as e:
             print(f'Error loading model data: {model}, {e}')
-            break
+            continue
         data['name'] = model
         data = data.reset_index(drop=False).rename(columns={'index':'ts'})
         cutoff = data.ts.max() - last_n
         frames.append(data[data['ts']>cutoff].copy())
     return pd.concat(frames)
 
-def get_model_data(
+def get_model_data(model_name):
+    try:
+        df = pd.read_csv(f'./data/{model_name}.csv')
+    except Exception as e:
+        print(f'Error opening model data for model:{model_name}')
+        return None
+    return df

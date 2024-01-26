@@ -1,6 +1,8 @@
 from dash import dcc, html, Input, Output, State, callback, no_update
 
-from callbacks.loaders import get_models, get_histories, get_model_hypers
+from callbacks.loaders import get_models, get_histories, get_model_hypers, get_metadata
+from callbacks.plots import get_line_graph, get_box_plot
+from test import launch_test
 
 import pandas as pd
 import numpy as np
@@ -78,6 +80,33 @@ def register_callbacks(app):
                 return f'Error processing args: {e}'
         else:
             return no_update
+
+    @app.callback(
+        Output('trigger_launch', 'children'),
+        Input('submit-test', 'n_clicks'),
+        Input('model-select', 'value')
+    )
+    def launch_test_process(n_clicks, model_name):
+        if n_clicks:
+            md = get_metadata()
+            md = md[md['name'] == model_name]
+            if len(md) > 0:
+                algo = md['algorithm'].values[0]
+                launch_test(model_name, algo)
+
+    @app.callback(
+        Output('graph', 'figure'),
+        Input('model-select', 'value'),
+        Input('graph-select', 'value'),
+        Input('last-n-input', 'value'),
+        Input('box-var-select', 'value')
+    )
+    def update_graph(model, graph_type, last_n, var):
+        if graph_type == 'line':
+            return get_line_graph(model)
+        else:
+            models = get_models()
+            return get_box_plot(var, last_n)
     
     @app.callback(
         Output('splitq-div', 'style'),
