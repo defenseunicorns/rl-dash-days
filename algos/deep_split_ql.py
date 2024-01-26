@@ -153,7 +153,7 @@ class DSQ:
         #process rewards
         target_reward, expected_reward = self.prepare_update(states, actions, next_states, rewards,
                                                 non_terms, curr_mask,
-                                                rew_t, rew_p, self.w_r, self.lambda_r)
+                                                rew_t, rew_p, self.w_r, reward_scale)
 
         #training step
         r_loss = self.step_training(self.opt_r, rew_p, target_reward, expected_reward)
@@ -162,7 +162,7 @@ class DSQ:
         #process punishments
         target_punishment, expected_punishment = self.prepare_update(states, actions, next_states, punishments,
                                                     non_terms, curr_mask,
-                                                    pun_t, pun_p, self.w_p, self.lambda_p)
+                                                    pun_t, pun_p, self.w_p, punish_scale)
         #training step
         p_loss = self.step_training(self.opt_p, pun_p, target_punishment, expected_punishment)
 
@@ -179,8 +179,6 @@ class DSQ:
         dev = self.device
         state = state.unsqueeze(0).to(dev)
         mask = torch.ones(1,self.num_actions).to(dev).squeeze(0)
-        pun.eval()
-        rew.eval()
         r_Q = rew(state, mask)
         p_Q = pun(state, mask)
         actions = (r_Q + p_Q).squeeze(0)
@@ -232,6 +230,7 @@ class DSQ:
         for e in range(epochs):
             terminal = False
             state, reward, terminal, lives, frames = self.env.reset()
+            running_stats = self.logger.init_epoch(running_stats)
             while not terminal:
                 new_state, reward, punishment, score, terminal, r_loss, p_loss = self.q_iteration(state, iteration)
                 iteration += 1
@@ -240,6 +239,7 @@ class DSQ:
                 else:
                     loss = None
                 running_stats = self.logger.update_running_stats(running_stats, score, loss)
+            running_stats = self.logger.end_epoch()
             if e%100 == 0:
                 eps = self.get_epsilon_for_iteration(iteration)
                 stop = self.logger.update_overall_stats(running_stats, eps, e, epochs)

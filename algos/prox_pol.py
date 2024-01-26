@@ -38,13 +38,9 @@ class PPOPolicy(nn.Module):
         action = dist.sample()
         action_logprob = dist.log_prob(action)
 
-        memory.states.append(state)
-        memory.actions.append(action)
-        memory.logprobs.append(action_logprob)
+        return action, action_logprob
 
-        return action, logprobs
-
-    def eval(self, states, actions):
+    def evaluate(self, states, actions):
         """Evaluation function that is used to gather elements to calculate GAE
             :param states: batch of states shape (bs, num_frames, height, width)
             :param actions: batch of actions shape (bs, num_actions)
@@ -68,14 +64,21 @@ class PPO:
         :param env: Environment object
         :param reward_fcn: reward function to interact with the environment
         :param gamma: reward discount
-        :param num_frames: 
+        :param num_frames: number of frames in a state
+        :param num_actions: ppo action space
+        :param eps_clip: clipping for ppo updates
+        :param timesteps_per_batch: Max timesteps for a single game
+        :param max_episodes: total number of games to run
+        :param update_timesteps: how many timesteps to update model
+        :param k_epochs: number of stochastic model updates
     """
     def __init__(self, name, env, reward_fcn,
                  gamma=.95, num_frames=4,
                  num_actions=2, training=True,
+                 eps_clip = .2,
                  timesteps_per_batch=2048,
                  max_episodes=5000,
-                 update_timesteps=10000,
+                 update_timesteps=5000,
                  k_epochs=10, **reward_kwargs):
         self.name = name
         self.path = f'./models/checkpoint_{self.name}.pt'
@@ -87,46 +90,37 @@ class PPO:
         self.start = self.reset_env()
         _, height, width = self.start.size()
         self.num_actions = 2
-        self.policy = PPOPolicy(height, width, num_frames, num_actions)
-        self.policy = policy.to(self.device).train()
+        self.policy = PPOPolicy(height, width, num_frames, num_actions, self.device)
+        self.policy.to(self.device).train()
         self.policy.apply(init_weights)
 
         if training:
             self.memory = PPOBuffer()
-            self.target = PPOPolicy(height, width, num_frames, num_actions=1)
-            self.target = target.to(self.device).eval()
+            self.target = PPOPolicy(height, width, num_frames, num_actions, dev=self.device)
+            self.target.to(self.device).eval()
             
             self.opt = torch.optim.Adam(self.policy.parameters(), lr=.00025, betas=[.9, .990])
             self.policy.train()
             self.timesteps_per_batch = timesteps_per_batch
+            self.update_timesteps = update_timesteps
             self.max_episodes = max_episodes
             self.k_epochs = k_epochs
             self.iteration = 0
+            self.eps_clip = eps_clip
             self.loss = nn.MSELoss()
 
         self.reward_kwargs = reward_kwargs
 
-    def translate_action(self, x_value, y_value):
-        """Translates stick position to discrete action space
-            :param x_value: x-axis position of joystick
-            :param y_value: y-axis position of joystick
-            :returns: integer for the discrete action
-        """
-        key = ""
-        if y_value > .5:
-            key += "up"
-        elif y_value < -.5:
-            key += "down"
-        if x_value > .5:
-            key += "right"
-        elif x_value < -.5:
-            key += "left"
-        return JOYSTICK_TRANSLATION[key]
+    def reset_env(self):
+        """resets the environment"""
+        state, score, terminal, lives, frame_number = self.env.reset()
+        self.lives = lives
+        return state
 
     def unpack_memory(self):
         rewards = []
-        discounted_rewards = 0
-        for reward, terminal in zip(reversed(self.mem.rewards), reversed(self.mem.terms)):
+        discounted_reward = 0
+        for reward, terminal in zip(reversed(self.memory.rewards), reversed(self.memory.terms)):
             if terminal:
                 discounted_reward = 0
             discounted_reward = reward + self.gamma * discounted_reward
@@ -134,19 +128,19 @@ class PPO:
 
         #normalize rewards
         rewards = torch.tensor(rewards).to(self.device)
-        rewards = (rewards - rewards.mean)) / (rewards.std() + 1e-5)
+        rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-5)
 
         #supporting tensors for loss calculation
         #detaching because the target calculated all of this
-        old_states = torch.squeeze(torch.stack(memory.states).to(self.device)).detach()
-        old_actions = torch.squeeze(torch.stack(memory.actions).to(self.device)).detach()
-        old_logprobs = torch.squeeze(torch.stack(memory.logprobs).to(self.device)).detach()
+        old_states = torch.squeeze(torch.stack(self.memory.states).to(self.device)).detach()
+        old_actions = torch.squeeze(torch.stack(self.memory.actions).to(self.device)).detach()
+        old_logprobs = torch.squeeze(torch.stack(self.memory.logprobs).to(self.device)).detach()
 
         return old_states, old_actions, old_logprobs, rewards
 
     def save_and_update(self):
         torch.save(self.policy.state_dict(), self.path)
-        self.target.load_state_dict(self.policy.state_dict()
+        self.target.load_state_dict(self.policy.state_dict())
     
     def update(self, running_stats):
         old_states, old_actions, old_logprobs, rewards = self.unpack_memory()
@@ -179,28 +173,32 @@ class PPO:
 
     def train(self, epochs=10000, start_iter=0):
         self.logger = Logger()
-        for e in self.max_episodes:
+        running_stats = self.logger.init_stats()
+        for e in range(self.max_episodes):
             state, score, terminal, lives, frame = self.env.reset()
             self.lives = lives
-            running_stats = self.logger.init_epoch()
+            running_stats = self.logger.init_epoch(running_stats)
             for i in range(1, self.timesteps_per_batch):
+                state = state.unsqueeze(0)
+                self.memory.push_state(state)
                 self.iteration += 1
-                action, logprob = self.target.act(state, self.mem)
-                env_action = self.translate(action[0].item(), action[1].item())
-                new_state, score, terminal, lives, frames = self.env.step(env_action)
+                action, logprob = self.target.act(state.to(self.device))
+                state, score, terminal, lives, frames = self.env.step(action.squeeze(0))
                 reward = self.reward_fcn(score, lives, self.lives, terminal, **self.reward_kwargs)
                 self.lives = lives
                 running_stats = self.logger.update_running_stats(running_stats, score)
     
-                self.mem.push(state, action, reward, terminal, logprobs)
+                self.memory.push(action, reward, terminal, logprob)
     
-                if self.iteration % self.update_timestep == 0:
+                if self.iteration % self.update_timesteps == 0:
                     running_stats = self.update(running_stats)
-                    self.mem.clear()
+                    self.memory.clear()
     
                 if terminal:
                     break
 
+            running_stats = self.logger.end_epoch(running_stats)
+            
             if e%100 == 0:
-                stop = self.logger.update_overall_stats(running_stats, e, epochs)
+                stop = self.logger.update_overall_stats(running_stats, None, e, epochs)
                 running_stats = self.logger.init_stats()

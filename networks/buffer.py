@@ -23,7 +23,7 @@ class ReplayBuffer(object):
     def __len__(self):
         return len(self.memory)
 
-def PPOBuffer(object):
+class PPOBuffer(object):
     """Buffer that makes garbage collection easier for PPO"""
     def __init__(self):
         self.states = []
@@ -32,8 +32,10 @@ def PPOBuffer(object):
         self.terms = []
         self.logprobs = []
 
-    def push(self, state, action, reward, terminal, logprobs):
+    def push_state(self, state):
         self.states.append(state)
+
+    def push(self, action, reward, terminal, logprobs):
         self.actions.append(action)
         self.rewards.append(reward)
         self.terms.append(terminal)

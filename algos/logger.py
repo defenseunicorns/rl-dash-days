@@ -34,7 +34,8 @@ class Logger:
         avg_score = stats['score'] / 100
         avg_its = stats['iterations'] / 100
         self.stats['score'].append(avg_score)
-        self.stats['epsilon'].append(eps)
+        if eps:
+            self.stats['epsilon'].append(eps)
         try:
             loss = stats['loss'] / stats['count']
         except Exception as e:

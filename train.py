@@ -1,7 +1,7 @@
 from algos.double_deep_ql import DDQ
 from algos.deep_split_ql import DSQ
-from networks.cnn import CNN
-from envs.mspacman import MsPacmanEnv, MsPacmanQL, MsPacmanPPO
+from algos.prox_pol import PPO
+from envs.mspacman import MsPacmanEnv
 from envs.mspacman_rewards import reward_fcns
 from subprocess import Popen
 import matplotlib.pyplot as plt
@@ -20,7 +20,7 @@ def build_runner(name, algo, reward_fcn, death_pen, ghost_mult,
     function = reward_fcns.get(reward_fcn, None)
     if not function:
         function = lambda a,b,c,d : a
-    env = MsPacmanEnv()
+    env = MsPacmanEnv(ppo = (algo=='PPO'))
     if algo == 'PPO':
         runner = PPO(name, env, function)
     elif algo == 'DDQ':

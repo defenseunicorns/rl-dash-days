@@ -4,6 +4,7 @@ import gym
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import random
 
 JOYSTICK_TRANSLATION = {
     "":0,
@@ -23,9 +24,10 @@ class MsPacmanEnv(Environment):
 
     :param num_frames: number of frames to include in a state
     :param action_space: tuple of action space dimensions / shape
+    :param ppo: whether to translate ppo action space (real valued joystick)
     """
-    def __init__(self, num_frames=4, action_space=9, environment=None,
-                 environment_name='MsPacmanDeterministic-v4',
+    def __init__(self, num_frames=4, action_space=9, ppo=False, 
+                 environment=None, environment_name='MsPacmanDeterministic-v4',
                  info_args=['lives','frame_number'], render_mode='rgb_array', **kwargs):
         super().__init__(environment, environment_name,
                          info_args, render_mode, **kwargs)
@@ -34,6 +36,7 @@ class MsPacmanEnv(Environment):
         else:
             self.action_space = action_space
         self.num_frames = num_frames
+        self.ppo = ppo
 
     def image_preprocess(self, img):
         """ Preprocesses a MsPacmanDeterministic observation
@@ -78,6 +81,25 @@ class MsPacmanEnv(Environment):
             frames.append(frame.clone())
         return self.bundle_update(frames, 0, False, info)
 
+    def translate_action(self, x_value, y_value):
+        """Translates stick position to discrete action space
+            :param x_value: x-axis position of joystick
+            :param y_value: y-axis position of joystick
+            :returns: integer for the discrete action
+        """
+        sensitivity = .5
+        key = ""
+        if y_value > sensitivity:
+            key += "up"
+        elif y_value < -sensitivity:
+            key += "down"
+        if x_value > sensitivity:
+            key += "right"
+        elif x_value < -sensitivity:
+            key += "left"
+        action = JOYSTICK_TRANSLATION[key]
+        return action
+
     def step(self, action, render=False, im=None):
         """Steps through num_frames with the associated action
             :param action: for MsPacman, integer from 0 to 8
@@ -88,6 +110,8 @@ class MsPacmanEnv(Environment):
         frames = []
         total_reward = 0
         terminal = False
+        if self.ppo:
+            action = self.translate_action(action[0].item(), action[1].item())
         for i in range(self.num_frames):
             if not terminal:
                 obs, reward, terminal, truncated, info = self.env.step(action)
@@ -101,62 +125,3 @@ class MsPacmanEnv(Environment):
                 total_reward = 0
             frames.append(frame)
         return self.bundle_update(frames, total_reward, terminal, info)
-
-class MsPacmanQL(MsPacmanEnv):
-    """
-        Special environment wrapper for use with Q-learning
-        (model outputs Q-values of actions)
-
-        Q learning update in form state, reward, score, terminal, lives, frame_number
-        Split-Q in form state, reward, punishment, score, terminal, lives, frame_number
-    """
-    
-    def __init__(self, split_q, num_frames=4, action_space=9,
-                 environment=None, environment_name='MsPacmanDeterministic-v4',
-                 info_args=['lives','frame_number'], render_mode='rgb_array', **kwargs):
-        super().__init__()
-
-    def choose_best_action(self, rewards, punishments=None):
-        """Chooses the best action given the q-values
-            :param rewards: tensor of q-values shape (9)
-            :param punishments: tensor of punishment q-values (if split q-learning)
-            :returns: integer for the best discrete action
-        """
-        if punishments:
-            rewards = rewards+punishments
-        return int(q_vals.max(0)[1])
-
-class MsPacmanPPO(MsPacmanEnv):
-    """
-        Special environment wrapper for use with PPO
-        Simulates actual joystick manipulation
-        
-        update in form state, reward, score, terminal, lives, frame_number
-    """
-    
-    def __init__(self, num_frames=4, action_space=9,
-                 environment=None, environment_name='MsPacmanDeterministic-v4',
-                 info_args=['lives','frame_number'], render_mode='rgb_array', **kwargs):
-        super().__init__()
-        self.reward_fcn = reward_fcn
-
-    def sample(self):
-        """Custom sampling to create fake joystick positions"""
-        
-
-    def interpret_action(self, x_value, y_value):
-        """Translates stick position to discrete action space
-            :param x_value: x-axis position of joystick
-            :param y_value: y-axis position of joystick
-            :returns: integer for the discrete action
-        """
-        key = ""
-        if y_value > .5:
-            key += "up"
-        elif y_value < -.5:
-            key += "down"
-        if x_value > .5:
-            key += "right"
-        elif x_value < -.5:
-            key += "left"
-        return JOYSTICK_TRANSLATION[key]
