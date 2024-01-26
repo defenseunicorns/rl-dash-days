@@ -36,6 +36,8 @@ class Logger:
         self.stats['score'].append(avg_score)
         if eps:
             self.stats['epsilon'].append(eps)
+        else:
+            self.stats['epsilon'].append(0)
         try:
             loss = stats['loss'] / stats['count']
         except Exception as e:

@@ -70,8 +70,13 @@ def train_model(name, algo, reward_fcn, death_pen, ghost_mult, epochs,
                          reward_weight, punish_weight, lambda_r, lambda_p)
     if not epochs:
         epochs = 10000
+
     runner.train(epochs=epochs)
     save_and_plot(runner.name, runner.logger.stats)
+
+    with open('./data/metadata.csv', 'a') as fh:
+        fh.write(f'{name},{algo},{reward_fcn},{epochs},{reward_weight}')
+        fh.write(f'{punish_weight},{lambda_r},{lambda_p}, {death_pen},{ghost_mult}\n')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Provide training arguments")

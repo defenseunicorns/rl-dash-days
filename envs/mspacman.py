@@ -98,6 +98,7 @@ class MsPacmanEnv(Environment):
         elif x_value < -sensitivity:
             key += "left"
         action = JOYSTICK_TRANSLATION[key]
+        #print(x_value, y_value, action)
         return action
 
     def step(self, action, render=False, im=None):

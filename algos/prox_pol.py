@@ -68,7 +68,6 @@ class PPO:
         :param num_actions: ppo action space
         :param eps_clip: clipping for ppo updates
         :param timesteps_per_batch: Max timesteps for a single game
-        :param max_episodes: total number of games to run
         :param update_timesteps: how many timesteps to update model
         :param k_epochs: number of stochastic model updates
     """
@@ -77,7 +76,6 @@ class PPO:
                  num_actions=2, training=True,
                  eps_clip = .2,
                  timesteps_per_batch=2048,
-                 max_episodes=5000,
                  update_timesteps=5000,
                  k_epochs=10, **reward_kwargs):
         self.name = name
@@ -103,7 +101,6 @@ class PPO:
             self.policy.train()
             self.timesteps_per_batch = timesteps_per_batch
             self.update_timesteps = update_timesteps
-            self.max_episodes = max_episodes
             self.k_epochs = k_epochs
             self.iteration = 0
             self.eps_clip = eps_clip
@@ -141,6 +138,10 @@ class PPO:
     def save_and_update(self):
         torch.save(self.policy.state_dict(), self.path)
         self.target.load_state_dict(self.policy.state_dict())
+
+    def load_eval(self):
+        self.policy.load_state_dict(torch.load(self.path))
+        self.policy.eval()
     
     def update(self, running_stats):
         old_states, old_actions, old_logprobs, rewards = self.unpack_memory()
@@ -174,7 +175,7 @@ class PPO:
     def train(self, epochs=10000, start_iter=0):
         self.logger = Logger()
         running_stats = self.logger.init_stats()
-        for e in range(self.max_episodes):
+        for e in range(epochs):
             state, score, terminal, lives, frame = self.env.reset()
             self.lives = lives
             running_stats = self.logger.init_epoch(running_stats)
@@ -202,3 +203,14 @@ class PPO:
             if e%100 == 0:
                 stop = self.logger.update_overall_stats(running_stats, None, e, epochs)
                 running_stats = self.logger.init_stats()
+
+    def eval(self):
+        self.load_eval()
+        state, reward, terminal, lives, frames = self.env.reset()
+        im = plt.imshow(self.env.render())
+        plt.ion()
+        while not terminal:
+            action, logprob = self.policy.act(state.unsqueeze(0).to(self.device))
+            state, score, terminal, lives, frames = self.env.step(action.squeeze(0), render=True, im=im)
+        plt.show()
+        

@@ -138,7 +138,7 @@ class DSQ:
         opt.step()
         return loss
     
-    def fit_buffer(self, sample):
+    def fit_buffer_test(self, sample):
         rew_p = self.reward_pol.train()
         rew_t = self.reward_tar.eval()
         reward_scale = 1 - self.lambda_r
@@ -168,6 +168,74 @@ class DSQ:
 
         return r_loss.item(), p_loss.item()
 
+    def fit_buffer(self, sample):
+        rew_p = self.reward_pol.train()
+        rew_t = self.reward_tar.eval()
+        reward_scale = 1 - self.lambda_r
+        punish_scale = 1 - self.lambda_p
+        pun_p = self.punish_pol.train()
+        pun_t = self.punish_tar.eval()
+        dev = self.device
+
+        #Unpack batch
+        states, actions, next_states, rewards, punishments, non_terms = list(zip(*sample))
+        states = torch.cat(states).to(dev)
+        actions = torch.tensor(actions).long().to(dev)
+        next_states = torch.cat(next_states).to(dev)
+        rewards = torch.tensor(rewards).long().to(dev)
+        punishments = torch.tensor(punishments).long().to(dev)
+        non_terms = torch.tensor(non_terms).to(dev)
+        one_hot = torch.ones((actions.size(0), self.num_actions)).to(dev)
+        curr_mask = F.one_hot(actions, self.num_actions).to(dev)
+
+        #process rewards
+        #Get best actions for next state from policy network
+        next_Qr_vals = rew_p(next_states, one_hot)
+        next_acts = next_Qr_vals.max(1)[1].to(dev)
+        next_mask = F.one_hot(next_acts, self.num_actions).to(dev)
+        #Use target network to calculate Y
+        next_Qr_vals = rew_t(next_states, next_mask)
+        curr_Qr_vals = rew_t(states,curr_mask)
+        next_Qr_vals = next_Qr_vals.gather(-1, next_acts.unsqueeze(1)).squeeze(-1) * non_terms
+        curr_Qr_vals = curr_Qr_vals.gather(-1, actions.unsqueeze(1)).squeeze(-1) * non_terms
+        next_Qr_vals = (next_Qr_vals * self.gamma) + (self.w_r * rewards)
+        target_Qr =  next_Qr_vals - (curr_Qr_vals * reward_scale)
+
+        #Use policy network to calculate Q(s,a)
+        expected_Qr_vals = rew_p(states, curr_mask)
+        expected_Qr_vals = expected_Qr_vals.gather(-1, actions.unsqueeze(1)).squeeze(1)
+
+        #training step
+        self.opt_r.zero_grad()
+        r_loss = self.loss(expected_Qr_vals, target_Qr)
+        r_loss.backward()
+        for param in rew_p.parameters():
+            param.grad.data.clamp_(-1, 1)
+        self.opt_r.step()
+
+        #process punishments
+        next_Qp_vals = pun_p(next_states, one_hot)
+        next_acts = next_Qp_vals.max(1)[1].to(dev)
+        next_mask = F.one_hot(next_acts, self.num_actions).to(dev)
+        next_Qp_vals = pun_t(next_states, next_mask)
+        curr_Qp_vals = pun_t(states,curr_mask)
+        next_Qp_vals = next_Qp_vals.gather(-1, next_acts.unsqueeze(1)).squeeze(-1) * non_terms
+        curr_Qp_vals = curr_Qp_vals.gather(-1, actions.unsqueeze(1)).squeeze(-1) * non_terms
+        next_Qp_vals = (next_Qp_vals * self.gamma) + (self.w_p * punishments)
+        target_Qp = next_Qp_vals - (curr_Qp_vals * punish_scale)
+
+        expected_Qp_vals = pun_p(states, curr_mask)
+        expected_Qp_vals = expected_Qp_vals.gather(-1, actions.unsqueeze(1)).squeeze(1)
+
+        self.opt_p.zero_grad()
+        p_loss = self.loss(expected_Qp_vals, target_Qp)
+        p_loss.backward()
+        for param in pun_p.parameters():
+            param.grad.data.clamp_(-1, 1)
+        self.opt_p.step()
+
+        return r_loss.item(), p_loss.item()
+
     def get_epsilon_for_iteration(self, iteration):
         #TODO provide scaling as parameter
         return max(.1, 1-(iteration*.9/1000000))
@@ -194,6 +262,8 @@ class DSQ:
             action = self.env.sample()
         else:
             action = self.infer_action(state)
+        if random.random() < .001:
+            print(action)
         new_state, score, terminal, lives, frame_number = self.env.step(action)
         reward, punishment = self.reward_fcn(score, lives, self.lives, terminal, **self.reward_kwargs)
         self.lives = lives
@@ -239,7 +309,7 @@ class DSQ:
                 else:
                     loss = None
                 running_stats = self.logger.update_running_stats(running_stats, score, loss)
-            running_stats = self.logger.end_epoch()
+            running_stats = self.logger.end_epoch(running_stats)
             if e%100 == 0:
                 eps = self.get_epsilon_for_iteration(iteration)
                 stop = self.logger.update_overall_stats(running_stats, eps, e, epochs)
@@ -277,7 +347,7 @@ class DSQ:
         im = plt.imshow(self.env.render())
         plt.ion()
         while not terminal:
-            action = self.infer_action(self, state)
+            action = self.infer_action(state)
             new_state, reward, terminal, lives, frames = self.env.step(action, render=True, im=im)
             state = new_state
         plt.show()
