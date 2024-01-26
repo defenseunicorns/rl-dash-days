@@ -239,7 +239,7 @@ class DSQ:
                 else:
                     loss = None
                 running_stats = self.logger.update_running_stats(running_stats, score, loss)
-            running_stats = self.logger.end_epoch()
+            running_stats = self.logger.end_epoch(running_stats)
             if e%100 == 0:
                 eps = self.get_epsilon_for_iteration(iteration)
                 stop = self.logger.update_overall_stats(running_stats, eps, e, epochs)
@@ -277,7 +277,7 @@ class DSQ:
         im = plt.imshow(self.env.render())
         plt.ion()
         while not terminal:
-            action = self.infer_action(self, state)
+            action = self.infer_action(state)
             new_state, reward, terminal, lives, frames = self.env.step(action, render=True, im=im)
             state = new_state
         plt.show()

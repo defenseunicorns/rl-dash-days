@@ -139,6 +139,10 @@ class PPO:
     def save_and_update(self):
         torch.save(self.policy.state_dict(), self.path)
         self.target.load_state_dict(self.policy.state_dict())
+
+    def load_eval(self):
+        self.policy.load_state_dict(self.path)
+        self.policy.eval()
     
     def update(self, running_stats):
         old_states, old_actions, old_logprobs, rewards = self.unpack_memory()
@@ -200,3 +204,14 @@ class PPO:
             if e%100 == 0:
                 stop = self.logger.update_overall_stats(running_stats, None, e, epochs)
                 running_stats = self.logger.init_stats()
+
+    def eval(self):
+        self.load_eval()
+        state, reward, terminal, lives, frames = self.env.reset()
+        im = plt.imshow(self.env.render())
+        plt.ion()
+        while not terminal:
+            action, logprob = self.policy.act(state.unsqueeze.to(self.device))
+            state, score, terminal, lives, frames = self.env.step(action.squeeze(0), render=True, im=im)
+        plt.show()
+        

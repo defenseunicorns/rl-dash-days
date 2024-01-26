@@ -10,7 +10,7 @@ header_layout = html.Div([
     ],className='col-sm-auto'),
     html.Div([
         html.H3("Reinforcement Learning Dashboard")
-    ], className='col-lg-auto')
+    ], className='col-lg-auto', style={'margin':'auto'})
 ], className='row')
 
 train_layout = html.Div([
@@ -49,7 +49,7 @@ train_layout = html.Div([
                 html.H4("Shared Parameters", className="row"),
                 html.Div([
                     dcc.Input(
-                        id='name-select',
+                        id='name-input',
                         placeholder='Model Name',
                     ),
                     dcc.Input(id='epochs-input',
@@ -71,7 +71,7 @@ train_layout = html.Div([
             ])
         ])
     ], className='row'),
-    html.Div(id='spliq-div', children=[
+    html.Div(id='splitq-div', children=[
         dbc.Card([
             dbc.CardBody([
                 html.H4("Split Q-learning parameters", className="row"),
@@ -101,11 +101,33 @@ train_layout = html.Div([
         ])
     ], className='row', style={'display':'none'}),
     html.Div([
-        dcc.Button(
-    ])
-], className='col-lg')
+        dbc.Button('Launch training', id='submit-train', n_clicks=0)
+    ]),
+    html.Div([], id='launch-cmd'),
+], className='col-sm')
+
+eval_layout = html.Div([
+    html.Div([
+        dbc.Card([
+            dbc.CardBody([
+                html.H4("Evaluation Options"),
+                html.Div([
+                    html.Div(["Select a model:", 
+                        dcc.Dropdown(
+                            id='model-select',
+                            options=[
+                            ],
+                            placeholder='Select a model',
+                        ),
+                    ], className='col'),
+                ])
+            ]),
+        ])
+    ], className='row'),
+], className='col-md')
 
 app_layout = html.Div([
     header_layout,
-    train_layout
-])
+    train_layout,
+    eval_layout
+], className='row')
