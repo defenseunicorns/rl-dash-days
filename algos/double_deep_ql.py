@@ -4,8 +4,9 @@ import numpy as np
 import torch.nn.functional as F
 from torch import nn
 import torch
-from networks.dqn import DQN, ReplayBuffer, init_weights
-from envs.mspacman import MSPacmanQL
+from networks.cnn import CNN, init_weights
+from networks.buffer import ReplayBuffer
+from algos.logger import Logger
 import random
 
 class DDQ:
@@ -21,27 +22,36 @@ class DDQ:
         :param batch_size: replay buffer batch sizes
         :param env: gym environment
         :param num_frames: number of frames per state (and number per action)
+        :param training: boolean -> whether framework is for training or evaluating
     """
-    def __init__(self, name, env, reward_fcn, policy, target
-                 gamma=.95, batch_size=64, num_frames=4, **reward_kwargs):
+    def __init__(self, name, env, reward_fcn,
+                 gamma=.95, batch_size=64, num_frames=4,
+                 training=True, **reward_kwargs):
         self.name = name
         self.path = f'./models/checkpoint_{self.name}.pt'
         self.reward_fcn = reward_fcn
         self.num_frames = num_frames
         self.device = torch.device('cuda') if torch.cuda.device_count() > 0 else torch.device('cpu')
-        self.memory = ReplayBuffer(50000)
         self.gamma = gamma
         self.batch_size = batch_size
         self.env = env
         self.start = self.reset_env()
         _, height, width = self.start.size()
         self.num_actions = self.env.action_space
-        self.policy = policy.to(self.device)
-        self.target = target.to(self.device)
-        self.loss = nn.SmoothL1Loss()
-        self.opt = torch.optim.RMSprop(self.policy.parameters(), lr=.00025, alpha=.95, eps=0.01)
+        self.policy = CNN(height, width, num_frames, self.env.action_space, q_learn=True)
+        self.policy.to(self.device).train()
         self.policy.apply(init_weights)
-        self.target.apply(init_weights)
+
+        if training:
+            self.memory = ReplayBuffer(50000)
+            self.target = CNN(height, width, num_frames, self.env.action_space, q_learn=True)
+            self.target.apply(init_weights)
+            self.loss = nn.SmoothL1Loss()
+            self.opt = torch.optim.RMSprop(self.policy.parameters(), lr=.00025, alpha=.95, eps=.01)
+            self.target = target.to(self.device).eval()
+            self.policy.eval()
+        else:
+            self.load_eval()
 
         self.reward_kwargs = reward_kwargs
 
@@ -56,9 +66,9 @@ class DDQ:
         non_terms = torch.tensor(non_terms).to(dev)
         next_mask = torch.ones((actions.size(0), self.num_actions))
         curr_mask = F.one_hot(actions, self.num_actions)
-        return states, next_states, rewards, non_terms, curr_mask, next_mask
+        return states, actions, next_states, rewards, non_terms, curr_mask, next_mask
 
-    def prepare_update(self, states, next_states, rewards, non_terms, curr_mask, next_mask):
+    def prepare_update(self, states, actions, next_states, rewards, non_terms, curr_mask, next_mask):
         """Uses target and policy network to prepare double deep-q update
             :param states: initial states for state transition
             :param next_states: end states for state transition
@@ -83,6 +93,8 @@ class DDQ:
         expected_Q_vals = policy(states.to(dev), curr_mask.to(dev))
         expected_Q_vals = expected_Q_vals.gather(-1, actions.unsqueeze(1)).squeeze(-1)
 
+        return next_Q_vals, expected_Q_vals
+
     def fit_buffer(self, sample):
         """Takes a sample of frames from the buffer and does training"""
         policy = self.policy
@@ -90,10 +102,10 @@ class DDQ:
         dev = self.device
 
         #load tensors
-        states, next_states, rewards, non_terms, curr_mask, next_mask = self.load_tensors(sample)
+        states, actions, next_states, rewards, non_terms, curr_mask, next_mask = self.load_tensors(sample)
         
         #update rule: Q(s,a) -> gamma* max_{a'}Q(s',a') + r
-        next_Q_vals, expected_Q_vals = self.prepare_update(states, next_states, rewards,
+        next_Q_vals, expected_Q_vals = self.prepare_update(states, actions, next_states, rewards,
                                                            non_terms, curr_mask, next_mask)
 
         self.opt.zero_grad()
@@ -121,8 +133,8 @@ class DDQ:
         state = state.unsqueeze(0).to(dev)
         mask = torch.ones(1,self.num_actions).to(dev).squeeze(0)
         self.policy.eval()
-        rewards = self.policy(state, mask)
-        return int(actions.max(0)[1])
+        q_vals = self.policy(state, mask).squeeze(0)
+        return int(q_vals.max(0)[1])
 
     def q_iteration(self, state, iteration):
         """Processes a single state transition / action choice"""
@@ -133,12 +145,19 @@ class DDQ:
         if random.random() < epsilon:
             action = self.env.sample()
         else:
-            action = self.infer_action(self, state)
+            action = self.infer_action(state)
         new_state, score, terminal, lives, frame_number = self.env.step(action)
         reward = self.reward_fcn(score, lives, self.lives, terminal, **self.reward_kwargs)
+        self.lives = lives
 
+        #handle non-terms for masking later
+        non_term = int(not terminal)
+        if new_state.shape[0] < 4:
+            print(new_state, new_state.shape[0], score, terminal, lives, frame_number)
+
+        #push to buffer
         mem = (state.unsqueeze(0), action,
-               new_state.unsqueeze(0), reward, terminal)
+               new_state.unsqueeze(0), reward, non_term)
         self.memory.push(mem)
 
         loss = None
@@ -149,81 +168,30 @@ class DDQ:
 
         return new_state, reward, score, terminal, loss
 
-    #TODO: Could probably abstract this to a logger class
-    #Or use MLflow?
-    def init_history(self):
-        self.stats = {'score':[], 'epsilon':[], 'loss':[], 'iterations':[]}
-
-    def init_stats(self):
-        stats = {
-            'loss':0,
-            'count':0,
-            'score':0,
-            'iterations':0,
-            'epoch_score':0,
-            'epoch_iterations':0
-        }
-        return stats
-
-    def init_epoch(self, stats):
-        state = self.env.reset()[0]
-        stats['epoch_score'] = 0
-        stats['epoch_iterations'] = 0
-        terminal = False
-        return terimnal, stats, state
-
-    def update_running_stats(stats, score, loss):
-        stats['iterations'] = stats['iterations'] + 1
-        stats['epoch_score'] = stats['epoch_score'] + score
-        stats['epoch_iterations'] = stats['epoch_iterations'] + 1
-        if loss is not None:
-            stats['loss'] = stats['loss'] + loss
-            stats['count'] = stats['count'] + 1
-        return stats
-
-    def update_overall_stats(stats, iteration):
-        avg_score = stats['score'] / 100
-        avg_its = stats['iterations'] / 100
-        self.stats['score'] = self.stats['score'].append(avg_score)
-        eps = self.get_epsilon_for_iteration(iteration)
-        self.stats['epsilon'] = self.stats['epsilon'].append(eps)
-        self.stats['loss'] = 
-
-    def end_epoch(stats):
-        stats['score'] = stats['score'] + stats['epoch_score']
-        stats['iterations'] = stats['iterations'] + stats['epoch_iterations']
-
     def train(self, epochs=10000, start_iter=0, updates=500):
         """Main training loop, saves statistics to class during training
             :param epochs: number of games to play
             :param start_iter: starting iteration (default 0)
             :param udpates: number of epochs before updating target model
         """
-        self.init_history()
+        self.logger = Logger()
         self.updates = updates    #when to save models / swap policy & target
         iteration = start_iter
-        running_stats = self.init_stats()
+        running_stats = self.logger.init_stats()
         for e in range(epochs):
-            terminal, running_stats, state = self.init_epoch(running_stats)
+            terminal = False
+            state, reward, terminal, lives, frames = self.env.reset()
+            running_stats = self.logger.init_epoch(running_stats)
             while not terminal:
                 new_state, reward, score, terminal, loss = self.q_iteration(state, 
                                                             iteration)
-                running_stats = self.update_running_stats(running_stats, score, loss)
-            running_stats = self.end_epoch(stats)
+                iteration += 1
+                running_stats = self.logger.update_running_stats(running_stats, score, loss)
+            running_stats = self.logger.end_epoch(running_stats)
             if e%100 == 0:
-                era_score = running_score / 100
-                era_its = running_its / 100
-                self.score_history.append(era_score)
                 eps = self.get_epsilon_for_iteration(iteration)
-                self.eps_history.append(eps)
-                self.loss_hist.append(running_loss / running_count)
-                self.its_hist.append(era_its)
-                print(f'---> Epoch {e}/{epochs}, Score: {era_score}, eps: {eps}')
-                print(f'-------->Loss: {running_loss / running_count}, Its: {era_its}')
-                running_loss = 0
-                running_count = 0
-                running_score = 0
-                running_its = 0
+                stop = self.logger.update_overall_stats(running_stats, eps, e, epochs)
+                running_stats = self.logger.init_stats()
             if e%updates == 0:
                 torch.save(self.policy.state_dict(), self.path)
                 self.load_target(self.path)
@@ -232,44 +200,17 @@ class DDQ:
         self.target.load_state_dict(torch.load(path))
         self.target.eval()
 
-    def load(self):
+    def load_eval(self):
         """Used before play() method to load policy network"""
         self.policy.load_state_dict(torch.load(self.path))
         self.policy.eval()
 
-    def play(self):
-        state = self.env.reset()[0]
+    def eval(self):
+        state, reward, terminal, lives, frames = self.env.reset()
         im = plt.imshow(self.env.render())
         plt.ion()
-        terminal = False
         while not terminal:
-            action = self.infer_action(self, state)
-            new_frames = []
-            for i in range(self.num_frames):
-                frame, reward, terminal, truncated, info = self.env.step(action)
-                lives = info['lives']
-                if terminal:
-                    break
-                im.set_data(self.env.render())
-                plt.draw()
-                plt.pause(.001)
-                new_frames.append(self.env.img_preprocess(new_frame))
-            state = torch.cat(new_frames)
-        plt.show()
-        
-
-    def plot(self):
-        fig, ax = plt.subplots()
-        plt.title(f'Score During Training - {self.updates} Epoch Updates')
-        ax.set_xlabel('100 Epoch')
-        ax.set_ylabel('Score')
-        ax2 = ax.twinx()
-        ax2.set_ylabel('Loss/Epsilon')
-        x = range(len(self.score_history))
-        lns1 = ax.plot(x, self.score_history, label='score')
-        lns2 = ax2.plot(x, self.eps_history, label='epsilon')
-        lns3 = ax2.plot(x, self.loss_hist, label='loss')
-        lns = lns1 + lns2 + lns3
-        lbls = [l.get_label() for l in lns]
-        ax.legend(lns, lbls)
+            action = self.infer_action(state)
+            new_state, reward, terminal, lives, frames = self.env.step(action, render=True, im=im)
+            state = new_state
         plt.show()

@@ -4,7 +4,8 @@ import numpy as np
 import torch.nn.functional as F
 from torch import nn
 import torch
-from networks.dqn import DQN, ReplayBuffer
+from networks.cnn import CNN
+from networks.buffer import ReplayBuffer
 import random
 
 REWARD_PATH = './models/checkpoint_dsqn_reward.pt'
@@ -44,13 +45,13 @@ class DSLearningNetwork:
         _, height, width = self.start.size()
         self.num_actions = self.env.action_space.n
         self.render = lambda : plt.imshow(env.render())
-        self.reward_pol = DQN(height, width, num_frames, self.num_actions).to(self.device).train()
-        self.reward_tar = DQN(height, width, num_frames, self.num_actions).to(self.device).eval()
-        self.punish_pol = DQN(height,width, num_frames, self.num_actions).to(self.device).train()
-        self.punish_tar = DQN(height, width, num_frames, self.num_actions).to(self.device).eval()
+        self.reward_pol = CNN(height, width, num_frames, self.num_actions, True).to(self.device).train()
+        self.reward_tar = CNN(height, width, num_frames, self.num_actions, True).to(self.device).eval()
+        self.punish_pol = CNN(height,width, num_frames, self.num_actions, True).to(self.device).train()
+        self.punish_tar = CNN(height, width, num_frames, self.num_actions, True).to(self.device).eval()
         self.loss = nn.SmoothL1Loss()
         self.opt_r = torch.optim.RMSprop(self.reward_pol.parameters(), lr=.00025, alpha=.95, eps=0.01)
-        self.opt_p = torch.optim.RMSprop(self.punish_pol.parameters(), lr=.00025, alpha=.95, eps=.01)
+        self.opt_p = torch.optim.RMSprop(self.punish_pol.parameters(), lr=.00025, alpha=.95, eps=0.01)
         self.reward_pol.apply(init_weights)
         self.reward_tar.apply(init_weights)
         self.punish_pol.apply(init_weights)

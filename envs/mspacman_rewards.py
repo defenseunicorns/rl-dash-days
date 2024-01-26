@@ -31,8 +31,8 @@ def split_q_parameterized(reward, curr_lives, prev_lives, terminal, **kwargs):
     ghost_mult = kwargs.get('ghost_mult', 1)
     if ghost_mult > 1 and reward > 200:
         reward = reward * ghost_mult
-    pos = reward
-    neg = -1
+    pos = reward + 1
+    neg = 0
     if curr_lives < prev_lives:
         neg -= (death_pen*(prev_lives - curr_lives))
     return pos, neg

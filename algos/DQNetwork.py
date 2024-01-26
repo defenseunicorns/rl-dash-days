@@ -195,39 +195,13 @@ class LearningNetwork:
         self.target.load_state_dict(torch.load(path))
         self.target.eval()
 
-    def play(self):
-        #TODO, update this method
-        state = self.get_start_state()
-        im = plt.imshow(self.env.render(mode='rgb_array'))
+    def eval(self):
+        state, reward, terminal, lives, frames = self.env.reset()
+        im = plt.imshow(self.env.render())
         plt.ion()
-        is_done = False
-        while not is_done:
-            action = self.choose_best_action(state)
-            new_state = []
-            for i in range(self.num_frames):
-                new_frame, reward, is_done, lives = self.env.step(action)
-                if is_done:
-                    break
-                im.set_data(self.env.render(mode='rgb_array'))
-                plt.draw()
-                plt.pause(.001)
-                new_state.append(self.preprocess(new_frame))
-            state = torch.cat(new_state)
+        while not terminal:
+            action = self.infer_action(self, state)
+            new_state, reward, terminal, lives, frames = self.env.step(action, render=True, im=im)
+            state = new_state
         plt.show()
-
-    def plot(self):
-        fig, ax = plt.subplots()
-        plt.title(f'Score During Training - {self.updates} Epoch Updates')
-        ax.set_xlabel('100 Epoch')
-        ax.set_ylabel('Score')
-        ax2 = ax.twinx()
-        ax2.set_ylabel('Loss/Epsilon')
-        x = range(len(self.score_history))
-        lns1 = ax.plot(x, self.score_history, label='score')
-        lns2 = ax2.plot(x, self.eps_history, label='epsilon')
-        lns3 = ax2.plot(x, self.loss_hist, label='loss')
-        lns = lns1 + lns2 + lns3
-        lbls = [l.get_label() for l in lns]
-        ax.legend(lns, lbls)
-        plt.show()
-#network.load_model(MODEL_PATH)
+        

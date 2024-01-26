@@ -5,6 +5,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
+JOYSTICK_TRANSLATION = {
+    "":0,
+    "up":1,
+    "right":2,
+    "left":3,
+    "down":4,
+    "upright":5,
+    "upleft":6,
+    "downright":7,
+    "downleft":8
+}
+
 class MsPacmanEnv(Environment):
     """
     Class to translate between a generic model and a MsPacman environment
@@ -18,7 +30,10 @@ class MsPacmanEnv(Environment):
         super().__init__(environment, environment_name,
                          info_args, render_mode, **kwargs)
         if action_space is None:
-            self.action_space = self.env.action_space.shape
+            self.action_space = self.env.action_space.n
+        else:
+            self.action_space = action_space
+        self.num_frames = num_frames
 
     def image_preprocess(self, img):
         """ Preprocesses a MsPacmanDeterministic observation
@@ -40,7 +55,7 @@ class MsPacmanEnv(Environment):
         state = torch.cat(frames)
         update = [state, reward, terminal]
         for arg in self.info_args:
-            update.append(self.info_args[arg])
+            update.append(info[arg])
         return update
 
     def render(self):
@@ -56,17 +71,18 @@ class MsPacmanEnv(Environment):
         """Resets environment
             :returns: (starting state (4 frame copies), reward, terminal, lives, frame_number)
         """
-        obs, reward, terminal, truncated, info = self.env.reset()
+        obs, info = self.env.reset()
         frame = self.image_preprocess(obs)
         frames = []
         for i in range(self.num_frames):
             frames.append(frame.clone())
-        return self.bundle_update(frames, reward, terminal, info)
+        return self.bundle_update(frames, 0, False, info)
 
-    def step(self, action, render=False):
+    def step(self, action, render=False, im=None):
         """Steps through num_frames with the associated action
             :param action: for MsPacman, integer from 0 to 8
-            :render: boolean, whether to render the frames as they are stepped through
+            :param render: boolean, whether to render the frames as they are stepped through
+            :parameter im: imshow object if rendering
             :returns (state {4 frames given action}, reward, terminal, lives, frame_number)
         """
         frames = []
@@ -75,13 +91,14 @@ class MsPacmanEnv(Environment):
         for i in range(self.num_frames):
             if not terminal:
                 obs, reward, terminal, truncated, info = self.env.step(action)
-                frame = self.img_preprocess(obs)
+                frame = self.image_preprocess(obs)
                 total_reward += reward
                 if render:
-                    self.render()
+                    im.set_data(self.env.render())
+                    plt.draw()
+                    plt.pause(.001)
             else:
                 total_reward = 0
-                break
             frames.append(frame)
         return self.bundle_update(frames, total_reward, terminal, info)
 
