@@ -262,8 +262,6 @@ class DSQ:
             action = self.env.sample()
         else:
             action = self.infer_action(state)
-        if random.random() < .001:
-            print(action)
         new_state, score, terminal, lives, frame_number = self.env.step(action)
         reward, punishment = self.reward_fcn(score, lives, self.lives, terminal, **self.reward_kwargs)
         self.lives = lives

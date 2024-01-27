@@ -23,7 +23,7 @@ train_layout = html.Div([
                         id='algo-select',
                         options=['Deep Q-learn',
                                  'Split Q-learn',
-                                 'PPO'
+                                 'Proximal Policy Optimization',
                                 ],
                         value='Deep Q-learn')
                 ], className='col'),
@@ -48,25 +48,55 @@ train_layout = html.Div([
             dbc.CardBody([
                 html.H4("Shared Parameters", className="row"),
                 html.Div([
-                    dcc.Input(
-                        id='name-input',
-                        placeholder='Model Name',
-                    ),
-                    dcc.Input(id='epochs-input',
+                    html.Div([
+                        html.Div("Model name", className='col-sm-2'),
+                        html.Div([
+                            dcc.Input(
+                                id='name-input',
+                                placeholder='Model Name',
+                                style={'width':'100%'},
+                            ),
+                        ], className='col'),
+                    ], className='row'),
+                    html.Div([
+                        html.Div("Epochs", className='col-sm-2'),
+                        html.Div([
+                            dcc.Input(
+                                id='epochs-input',
                                 type='number',
                                 placeholder='Epochs',
                                 min=1000,
-                                max=10000),
-                    dcc.Input(id='death-pen-input',
+                                max=10000,
+                                style={'width':'100%'}
+                            ),
+                        ], className='col'),
+                    ], className='row'),
+                    html.Div([
+                        html.Div("Death penalty", className='col-sm-2'),
+                        html.Div([
+                            dcc.Input(
+                                id='death-pen-input',
                                 type='number',
                                 placeholder='Death Penalty',
                                 min=50,
-                                max=1000),
-                    dcc.Input(id='ghost-mult-input',
-                              type='number',
-                              placeholder='Ghost Multiplier',
-                              min=1,
-                              max=10),
+                                max=1000,
+                                style={'width':'100%'}
+                            ),
+                        ], className='col'),
+                    ], className='row'),
+                    html.Div([
+                        html.Div("Ghost multiplier", className='col-sm-2'),
+                        html.Div([
+                        dcc.Input(
+                            id='ghost-mult-input',
+                            type='number',
+                            placeholder='Ghost Multiplier',
+                            min=1,
+                            max=10,
+                            style={'width':'100%'}
+                        ),
+                        ], className='col'),
+                    ], className='row'),
                 ], className='row')
             ])
         ])
@@ -76,29 +106,57 @@ train_layout = html.Div([
             dbc.CardBody([
                 html.H4("Split Q-learning parameters", className="row"),
                 html.Div([
-                    dcc.Input(id='wr-input',
-                                type='number',
-                                placeholder='Reward Weighting',
-                                min=.1,
-                                max=1),
-                    dcc.Input(id='wp-input',
-                                type='number',
-                                placeholder='Punishment Weighting',
-                                min=.1,
-                                max=1),
-                    dcc.Input(id='lambda-r-input',
-                              type='number',
-                              placeholder='Reward memory',
-                              min=.1,
-                              max=10),
-                    dcc.Input(id='lambda-p-input',
-                              type='number',
-                              placeholder='Punish memory',
-                              min=.1,
-                              max=10)
-                ], className='row')
-            ])
-        ])
+                    html.Div([
+                        html.Div("Reward weight", className='col-sm-2'),
+                        html.Div([
+                            dcc.Input(id='wr-input',
+                                        type='number',
+                                        placeholder='Reward Weighting',
+                                        min=.1,
+                                        max=1,
+                                        style={'width':'100%'}
+                                     ),
+                        ], className='col'),
+                    ], className='row'),
+                    html.Div([
+                        html.Div("Punishment weight", className='col-sm-2'),
+                        html.Div([
+                            dcc.Input(id='wp-input',
+                                        type='number',
+                                        placeholder='Punishment Weighting',
+                                        min=.1,
+                                        max=1,
+                                        style={'width':'100%'}
+                                     ),
+                        ],className='col'),
+                    ], className='row'),
+                    html.Div([
+                        html.Div("Reward memory", className='col-sm-2'),
+                        html.Div([
+                            dcc.Input(id='lambda-r-input',
+                                      type='number',
+                                      placeholder='Reward memory',
+                                      min=.1,
+                                      max=10,
+                                      style={'width':'100%'}
+                                     ),
+                        ], className='col'),
+                    ], className='row'),
+                    html.Div([
+                        html.Div("Punishment memory", className='col-sm-2'),
+                        html.Div([
+                            dcc.Input(id='lambda-p-input',
+                                      type='number',
+                                      placeholder='Punish memory',
+                                      min=.1,
+                                      max=10,
+                                      style={'width':'100%'}
+                                     ),
+                        ], className='col'),
+                    ], className='row'),
+                ], className='row'),
+            ]),
+        ]),
     ], className='row', style={'display':'none'}),
     html.Div([
         html.Div([
