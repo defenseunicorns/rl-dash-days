@@ -213,4 +213,10 @@ class PPO:
             action, logprob = self.policy.act(state.unsqueeze(0).to(self.device))
             state, score, terminal, lives, frames = self.env.step(action.squeeze(0), render=True, im=im)
         plt.show()
+
+    def advance(self, state, env, im):
+        action, logprob = self.policy.act(state.unsqueeze(0).to(self.device))
+        action = action.squeeze(0)
+        action = env.translate_action(action[0].item(), action[1].item())
+        return env.step(action, render=True, im=im)
         

@@ -15,11 +15,12 @@ import numpy as np
 import argparse
 import os
 
-def build_runner(name, algo):
+def build_runner(name, algo, env=None):
     function = reward_fcns.get('vanilla', None)
     if not function:
         function = lambda a,b,c,d : a
-    env = MsPacmanEnv(ppo = (algo=='PPO'))
+    if not env:
+        env = MsPacmanEnv(ppo = (algo=='PPO'))
     if algo == 'PPO':
         runner = PPO(name, env, function, training=False)
     elif algo == 'DDQ':

@@ -111,7 +111,7 @@ class MsPacmanEnv(Environment):
         frames = []
         total_reward = 0
         terminal = False
-        if self.ppo:
+        if self.ppo or ppo:
             action = self.translate_action(action[0].item(), action[1].item())
         for i in range(self.num_frames):
             if not terminal:
