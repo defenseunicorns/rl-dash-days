@@ -238,7 +238,7 @@ class DSQ:
 
     def get_epsilon_for_iteration(self, iteration):
         #TODO provide scaling as parameter
-        return max(.01, 1-(iteration*.99/100000))
+        return max(.01, 1-(iteration*.99/300000))
 
     def infer_action(self, state):
         """Chooses the max of reward + punishment"""
@@ -300,7 +300,8 @@ class DSQ:
             state, reward, terminal, lives, frames = self.env.reset()
             running_stats = self.logger.init_epoch(running_stats)
             while not terminal:
-                new_state, reward, punishment, score, terminal, r_loss, p_loss = self.q_iteration(state, iteration)
+                new_state, reward, punishment, score, terminal, r_loss, p_loss = self.q_iteration(state,
+                                                                                          iteration)
                 iteration += 1
                 if r_loss:
                     loss = (r_loss + p_loss)/2
