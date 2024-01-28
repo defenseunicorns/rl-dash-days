@@ -2,4 +2,5 @@ name,algorithm,reward_fcn,epochs,r_weight,p_weight,r_memory,p_memory,death_pen,g
 test,DDQ,vanilla,5000,,,,,,
 dsq_test,DSQ,split_q,2000,.5,1,.5,1,500,
 ppo-test,PPO,life_penalty,2000,,,,,,
-aggressive,PPO,parameterized,4000,NoneNone,None,None, 100,4
+aggressive,PPO,parameterized,4000,None,None,None,None,100,4
+cp_split,DSQ,split_q,10000,0.5,1.0,0.5,1.0,500,None
