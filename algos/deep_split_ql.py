@@ -238,7 +238,7 @@ class DSQ:
 
     def get_epsilon_for_iteration(self, iteration):
         #TODO provide scaling as parameter
-        return max(.1, 1-(iteration*.9/1000000))
+        return max(.01, 1-(iteration*.99/100000))
 
     def infer_action(self, state):
         """Chooses the max of reward + punishment"""
