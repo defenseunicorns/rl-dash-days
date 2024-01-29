@@ -1,5 +1,6 @@
 cmake==3.28.1
 numpy==1.26.0
+pandas==2.1.2
 atari-py==0.2.9
 ale-py==0.8.1
 gym[atari,accept-rom-license]==0.26.2
