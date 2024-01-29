@@ -108,17 +108,21 @@ def register_callbacks(app):
 
     @app.callback(
         Output('graph', 'figure'),
+        Output('lastn-div', 'style'),
+        Output('boxvar-div', 'style'),
         Input('model-select', 'value'),
         Input('graph-select', 'value'),
         Input('last-n-input', 'value'),
         Input('box-var-select', 'value')
     )
     def update_graph(model, graph_type, last_n, var):
+        hidden = {'display':'none'}
+        visible = {'display':'inline'}
         if graph_type == 'line':
-            return get_line_graph(model)
+            return get_line_graph(model), hidden, hidden
         else:
             models = get_models()
-            return get_box_plot(var, last_n)
+            return get_box_plot(var, last_n), visible, visible
     
     @app.callback(
         Output('splitq-div', 'style'),

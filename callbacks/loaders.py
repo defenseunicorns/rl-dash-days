@@ -17,6 +17,8 @@ def get_model_hypers(model):
 
 def get_histories(models, last_n):
     frames = []
+    if last_n is None:
+        last_n = 1
     for model in models:
         try:
             data = pd.read_csv(f'./data/{model}.csv')

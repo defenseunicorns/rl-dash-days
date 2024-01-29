@@ -213,14 +213,14 @@ graph_layout = html.Div([
                         dcc.Input(id='last-n-input',
                                   type='number',
                                   value = 10)
-                    ], className='col'),
+                    ], className='col', id='lastn-div', style={'display':'hidden'}),
                 html.Div(["Variable to plot",
                     dcc.Dropdown(
                         id='box-var-select',
                         options=['score', 'actions', 'score/actions'],
                         value='score',
                     )
-                ], className='col'),
+                ], className='col', id='boxvar-div', style={'display':'hidden'}),
             ], className='row'),
             html.Div([
                 dcc.Graph(
