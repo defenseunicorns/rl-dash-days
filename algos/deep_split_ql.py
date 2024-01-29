@@ -238,7 +238,7 @@ class DSQ:
 
     def get_epsilon_for_iteration(self, iteration):
         #TODO provide scaling as parameter
-        return max(.1, 1-(iteration*.9/1000000))
+        return max(.01, 1-(iteration*.99/300000))
 
     def infer_action(self, state):
         """Chooses the max of reward + punishment"""
@@ -262,8 +262,6 @@ class DSQ:
             action = self.env.sample()
         else:
             action = self.infer_action(state)
-        if random.random() < .001:
-            print(action)
         new_state, score, terminal, lives, frame_number = self.env.step(action)
         reward, punishment = self.reward_fcn(score, lives, self.lives, terminal, **self.reward_kwargs)
         self.lives = lives
@@ -302,7 +300,8 @@ class DSQ:
             state, reward, terminal, lives, frames = self.env.reset()
             running_stats = self.logger.init_epoch(running_stats)
             while not terminal:
-                new_state, reward, punishment, score, terminal, r_loss, p_loss = self.q_iteration(state, iteration)
+                new_state, reward, punishment, score, terminal, r_loss, p_loss = self.q_iteration(state,
+                                                                                          iteration)
                 iteration += 1
                 if r_loss:
                     loss = (r_loss + p_loss)/2
@@ -351,4 +350,9 @@ class DSQ:
             new_state, reward, terminal, lives, frames = self.env.step(action, render=True, im=im)
             state = new_state
         plt.show()
+
+    def advance(self, state, env, im):
+        """For use with a ModelCombiner class"""
+        action = self.infer_action(state)
+        return env.step(action, render=True, im=im)
         

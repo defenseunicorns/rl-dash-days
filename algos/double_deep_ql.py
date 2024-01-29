@@ -214,3 +214,7 @@ class DDQ:
             new_state, reward, terminal, lives, frames = self.env.step(action, render=True, im=im)
             state = new_state
         plt.show()
+
+    def advance(self, state, env, im):
+        """For use with a ModelCombiner class"""
+        

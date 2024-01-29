@@ -8,6 +8,12 @@ import pandas as pd
 import numpy as np
 import os
 
+algos = {
+    'Deep Q-learn': 'DDQ',
+    'Split Q-learn': 'DSQ',
+    'Proximal Policy Optimization': 'PPO'
+}
+
 def register_callbacks(app):
 
     @app.callback(
@@ -57,8 +63,14 @@ def register_callbacks(app):
                 return "Error: Name and Algorithm must be defined"
         
             try:
-                cmd = f'python train.py -n {name} -a {algo} '
+                cmd = f'python train.py -n {name} -a {algos.get(algo)} '
                 if reward_fcn is not None:
+                    if algo == 'Split Q-learn':
+                        if reward_fcn != 'split_q':
+                            return "split_q reward function must be used with Split Q-learn"
+                    else:
+                        if reward_fcn == 'split_q':
+                            return "split_q reward function is only for Split Q-learn algorithm"
                     cmd += f'-r {reward_fcn} '
                 if epochs and epochs < 10000 and epochs > 1000:
                     cmd += f'-e {epochs} '

@@ -20,12 +20,14 @@ To train a model, use the following CLI with `python train.py`
 ### Testing CLI
 To test a model, see the output, apply the `-n` name and `-a` algorithm tags to `python test.py` For a saved model.
 
+### Combine models
+
 ### Frontend dashboard
 To see the frontend, run `python dashboard.py`, which will make the dashboard available at `localhost:5000`.
 
 ## Repo structure
 ### Backend
-The backend comprises of the gym environmenmt wrapper `envs/mspacman.py`, and the reward functions, `envs/mspacman_rewards.py`.  The algorithms are found in the `algos/` folder and contain all the code needed to initialize a model, load a model, and run a training loop or test loop.  The `networks` folder has the actual Convolutional Neural Network architecture and the state transition buffer architectures.  Data for actual runs and metadata of saved models is stored in the `data/` folder, which the frontend interacts with.  Actual model weights are saved in the `models/` folder.
+The backend comprises of the gym environmenmt wrapper `envs/mspacman.py`, and the reward functions, `envs/mspacman_rewards.py`.  The algorithms are found in the `algos/` folder and contain all the code needed to initialize a model, load a model, and run a training loop or test loop.  The `networks` folder has the actual Convolutional Neural Network architecture and the state transition buffer architectures.  Data for actual runs and metadata of saved models is stored in the `data/` folder, which the frontend interacts with.  Actual model weights are saved in the `models/` folder.  There is some boilerplate code to combine two models into a kind of state machine of models with `combine.py` but I didn't really develop this capability, it was just an idea.
 
 ### Frontend
 The frontend consists of a ploty Dash application.  The layout is stored in `layouts/layout.py` while most of the other functionality is stored in `callbacks/`, which includes the data loaders, the functionality, and the plotting functions.
