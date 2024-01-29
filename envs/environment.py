@@ -26,7 +26,7 @@ class Environment:
         """steps the environment"""
         pass
     
-    def redner(self):
+    def render(self):
         """renders the environment"""
         pass
 
