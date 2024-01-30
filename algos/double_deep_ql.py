@@ -125,7 +125,7 @@ class DDQ:
 
     def get_epsilon_for_iteration(self, iteration):
         """simple linear epsilon function for"""
-        return max(.01, 1-(iteration*.99/300000))
+        return max(.05, 1-(iteration*.99/800000))
 
     def infer_action(self, state):
         """Uses the policy model to choose best action for state"""
