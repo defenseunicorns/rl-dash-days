@@ -183,7 +183,7 @@ class DDQ:
             state, reward, terminal, lives, frames = self.env.reset()
             running_stats = self.logger.init_epoch(running_stats)
             while not terminal:
-                new_state, reward, score, terminal, loss = self.q_iteration(state, 
+                state, reward, score, terminal, loss = self.q_iteration(state, 
                                                             iteration)
                 iteration += 1
                 running_stats = self.logger.update_running_stats(running_stats, score, loss)

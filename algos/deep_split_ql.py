@@ -300,7 +300,7 @@ class DSQ:
             state, reward, terminal, lives, frames = self.env.reset()
             running_stats = self.logger.init_epoch(running_stats)
             while not terminal:
-                new_state, reward, punishment, score, terminal, r_loss, p_loss = self.q_iteration(state,
+                state, reward, punishment, score, terminal, r_loss, p_loss = self.q_iteration(state,
                                                                                           iteration)
                 iteration += 1
                 if r_loss:
