@@ -1,5 +1,3 @@
 name,algorithm,reward_fcn,epochs,r_weight,p_weight,r_memory,p_memory,death_pen,ghost_mult
-test,DDQ,vanilla,5000,,,,,,
-dsq_test,DSQ,split_q,2000,.5,1,.5,1,500,
-ppo-test,PPO,life_penalty,5000,,,,,,
 ppo_long,PPO,life_penalty,10000,None,None,None,None,None,None
+cp,DSQ,split_q,6000,0.5,1.0,0.5,1.0,100,None

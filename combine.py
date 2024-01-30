@@ -1,8 +1,6 @@
-from algos.deep_split_ql import DSQ
-from algos.double_deep_ql import DDQ
-from algos.prox_pol import PPO
 from envs.mspacman import MsPacmanEnv
 from test import build_runner
+import matplotlib.pyplot as plt
 
 def lives_combiner(state, reward, curr_lives, prev_lives, terminal, **kwargs):
     """simple combiner that returns 0 if lives == 3 else 1"""
@@ -18,8 +16,8 @@ class ModelCombiner:
             :combination_fcn: fcn that takes state information and chooses model
         """
         self.env = MsPacmanEnv()
-        self.model0 = build_runner(model0_params[0], model0_params[1], env)
-        self.model1 = build_runner(model1_params[0], model1_params[1], env)
+        self.model0 = build_runner(model0_params[0], model0_params[1], self.env)
+        self.model1 = build_runner(model1_params[0], model1_params[1], self.env)
         self.combine = combination_fcn
 
     def eval(self):
@@ -34,3 +32,10 @@ class ModelCombiner:
                 state, reward, terminal, lives, frame = self.model1.advance(state, self.env, im)
             else:
                 state, reward, terminal, lives, frame = self.model0.advance(state, self.env, im)
+
+def eval_combination(m0_name, m0_algo, m1_name, m1_algo, combination_fcn=lives_combiner):
+    runner = ModelCombiner([m0_name, m0_algo], [m1_name, m1_algo], combination_fcn)
+    runner.eval()
+
+if __name__ == '__main__':
+    eval_combination('cp', 'DSQ', 'ppo_long', 'PPO')

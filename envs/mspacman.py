@@ -1,6 +1,5 @@
 from envs.environment import Environment
 
-import gym
 import matplotlib.pyplot as plt
 import numpy as np
 import torch

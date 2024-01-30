@@ -1,4 +1,3 @@
-import gym
 import matplotlib.pyplot as plt
 import numpy as np
 import torch.nn.functional as F
@@ -31,7 +30,7 @@ class DDQ:
         self.path = f'./models/checkpoint_{self.name}.pt'
         self.reward_fcn = reward_fcn
         self.num_frames = num_frames
-        self.device = torch.device('cuda') if torch.cuda.device_count() > 0 else torch.device('cpu')
+        self.device = torch.device('cuda') if torch.cuda.device_count() > 0 and training else torch.device('cpu')
         self.gamma = gamma
         self.batch_size = batch_size
         self.env = env

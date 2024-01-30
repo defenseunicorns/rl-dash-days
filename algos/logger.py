@@ -46,8 +46,8 @@ class Logger:
         self.stats['loss'].append(loss)
         self.stats['iterations'].append(avg_its)
 
-        print(f'---> Epoch {epoch}/{num_epochs}, Score: {avg_score}, eps: {eps}')
-        print(f'-------->Loss: {loss}, Its: {avg_its}')
+        print(f'---> Epoch {epoch}/{num_epochs}, Avg. Score/game: {avg_score}, Epsilon: {eps}')
+        print(f'-------->Avg. Loss: {loss}, Avg. Actions/game: {avg_its}')
 
         early_stop = False
         score_stop = False
