@@ -48,7 +48,7 @@ class DDQ:
             self.target.apply(init_weights)
             self.loss = nn.SmoothL1Loss()
             self.opt = torch.optim.RMSprop(self.policy.parameters(), lr=.00025, alpha=.95, eps=.01)
-            self.target = target.to(self.device).eval()
+            self.target.to(self.device).eval()
             self.policy.eval()
         else:
             self.load_eval()
