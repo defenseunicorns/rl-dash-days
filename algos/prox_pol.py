@@ -157,6 +157,8 @@ class PPO:
         new_std = self.action_std - self.action_std_decay
         if new_std < .005:
             self.action_std = .005
+        else:
+            self.action_std = new_std
         self.policy.set_action_std(self.action_std)
         self.target.set_action_std(self.action_std)
     
