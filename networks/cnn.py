@@ -30,7 +30,6 @@ class CNN(nn.Module):
         :param frames: number of frames per state
         :param num_actions: action space dimension
         :param q-learn: whether model is used with q-learning
-        :param bs: Batch Size
         :param alpha: for use with split-qlearning to scale the gradient
     """
     def __init__(self, height, width, num_frames, num_actions, q_learn=True, alpha=1):

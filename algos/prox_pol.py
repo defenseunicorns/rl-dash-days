@@ -22,10 +22,14 @@ class PPOPolicy(nn.Module):
     def __init__(self, height, width, num_frames, num_actions, dev, action_std=.5):
         super().__init__()
         self.dev = dev
+        self.num_actions = num_actions
         self.actor = CNN(height, width, num_frames, num_actions, q_learn=False)
         self.critic = CNN(height, width, num_frames, num_actions=1, q_learn=False)
 
         self.action_var = torch.full((num_actions, ), action_std*action_std).to(self.dev)
+
+    def set_action_std(self, action_std):
+        self.action_var = torch.full((self.num_actions, ), action_std*action_std).to(self.dev)
 
     def act(self, state):
         """Infers an action from a state and updates the buffer
@@ -105,6 +109,12 @@ class PPO:
             self.iteration = 0
             self.eps_clip = eps_clip
             self.loss = nn.MSELoss()
+            self.action_std = .5
+            self.action_std_decay = .01
+        else:
+            self.action_std = .1
+            self.action_std_decay = None
+            self.policy.set_action_std(self.action_std)
 
         self.reward_kwargs = reward_kwargs
 
@@ -128,7 +138,7 @@ class PPO:
         rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-5)
 
         #supporting tensors for loss calculation
-        #detaching because the target calculated all of this
+        #detaching because the target calculated all of this / not relevant to updates
         old_states = torch.squeeze(torch.stack(self.memory.states).to(self.device)).detach()
         old_actions = torch.squeeze(torch.stack(self.memory.actions).to(self.device)).detach()
         old_logprobs = torch.squeeze(torch.stack(self.memory.logprobs).to(self.device)).detach()
@@ -142,6 +152,13 @@ class PPO:
     def load_eval(self):
         self.policy.load_state_dict(torch.load(self.path))
         self.policy.eval()
+
+    def update_action_std(self):
+        new_std = self.action_std - self.action_std_decay
+        if new_std < .005:
+            self.action_std = .005
+        self.policy.set_action_std(self.action_std)
+        self.target.set_action_std(self.action_std)
     
     def update(self, running_stats):
         old_states, old_actions, old_logprobs, rewards = self.unpack_memory()
@@ -157,7 +174,7 @@ class PPO:
             actor_loss = - torch.min(l1, l2)
 
             #critic loss
-            critic_loss = .5 * self.loss(rewards, state_values) - .01 * dist_entropy
+            critic_loss = .8 * self.loss(rewards, state_values) - .01 * dist_entropy
 
             #total loss
             loss = actor_loss + critic_loss
@@ -165,6 +182,7 @@ class PPO:
             self.opt.zero_grad()
             loss.mean().backward()
             self.opt.step()
+            self.update_action_std()
 
         running_stats['loss'] = loss.mean().item()
         running_stats['count'] = 1
@@ -175,6 +193,7 @@ class PPO:
     def train(self, epochs=10000, start_iter=0):
         self.logger = Logger()
         running_stats = self.logger.init_stats()
+        self.action_std_decay = 10 * (self.action_std - .1) / epochs
         for e in range(epochs):
             state, score, terminal, lives, frame = self.env.reset()
             self.lives = lives
@@ -201,7 +220,7 @@ class PPO:
             running_stats = self.logger.end_epoch(running_stats)
             
             if e%100 == 0:
-                stop = self.logger.update_overall_stats(running_stats, None, e, epochs)
+                stop = self.logger.update_overall_stats(running_stats, self.action_std, e, epochs)
                 running_stats = self.logger.init_stats()
 
     def eval(self):
