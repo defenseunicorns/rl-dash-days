@@ -2,4 +2,3 @@ name,algorithm,reward_fcn,epochs,r_weight,p_weight,r_memory,p_memory,death_pen,g
 ppo_long,PPO,life_penalty,10000,None,None,None,None,None,None
 cp,DSQ,split_q,6000,0.5,1.0,0.5,1.0,100,None
 ddq,DDQ,life_penalty,6000,None,None,None,None,None,None
-ppo_param,PPO,parameterized,15000,None,None,None,None,100,None
